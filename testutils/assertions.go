@@ -1,4 +1,4 @@
-package mixednuts
+package testutils
 
 import (
 	"fmt"
