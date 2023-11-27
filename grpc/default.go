@@ -19,7 +19,7 @@ import (
 	"runtime/debug"
 )
 
-func DefaultGrpcServer(logger *zap.SugaredLogger) (*grpc.Server, *prometheus.Registry) {
+func DefaultGrpcServer(logger *zap.SugaredLogger, interceptors ...grpc.UnaryServerInterceptor) (*grpc.Server, *prometheus.Registry) {
 	logTraceID := func(ctx context.Context) grpclogging.Fields {
 		requestID, _ := ctx.Value(logging.RequestIDKey).(string)
 		return grpclogging.Fields{string(logging.RequestIDKey), requestID}
@@ -49,13 +49,23 @@ func DefaultGrpcServer(logger *zap.SugaredLogger) (*grpc.Server, *prometheus.Reg
 		return status.Errorf(codes.Internal, "%s", p)
 	}
 
+	// prepare the request_id interceptors
+	defaultInterceptors := []grpc.UnaryServerInterceptor{
+		server_interceptor.RequestIDServerInterceptor(),
+	}
+
+	// append the additional interceptors passed to the function
+	allInterceptors := append(defaultInterceptors, interceptors...)
+
+	// append other default interceptors
+	allInterceptors = append(allInterceptors,
+		srvMetrics.UnaryServerInterceptor(grpcprom.WithExemplarFromContext(exemplarFromContext)),
+		grpclogging.UnaryServerInterceptor(interceptorLogger(logger), grpclogging.WithFieldsFromContext(logTraceID)),
+		recovery.UnaryServerInterceptor(recovery.WithRecoveryHandler(grpcPanicRecoveryHandler)),
+	)
+
 	grpcSrv := grpc.NewServer(
-		grpc.ChainUnaryInterceptor(
-			server_interceptor.RequestIDServerInterceptor(),
-			srvMetrics.UnaryServerInterceptor(grpcprom.WithExemplarFromContext(exemplarFromContext)),
-			grpclogging.UnaryServerInterceptor(interceptorLogger(logger), grpclogging.WithFieldsFromContext(logTraceID)),
-			recovery.UnaryServerInterceptor(recovery.WithRecoveryHandler(grpcPanicRecoveryHandler)),
-		),
+		grpc.ChainUnaryInterceptor(allInterceptors...),
 	)
 
 	srvMetrics.InitializeMetrics(grpcSrv)

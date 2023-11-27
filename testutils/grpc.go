@@ -59,6 +59,6 @@ func (t *TestGrpcServer) Dial() *grpc.ClientConn {
 func VerifyGrpcError(actual error, expect errors.GrpcError) {
 	e, ok := status.FromError(actual)
 	So(ok, ShouldBeTrue)
-	So(e.Code(), ShouldEqual, expect.GetGrpcCode())
-	So(e.Message(), ShouldEqual, expect.GetGrpcMessage())
+	So(e.Code(), ShouldEqual, expect.GetCode())
+	So(e.Message(), ShouldEqual, expect.GetMessage())
 }
