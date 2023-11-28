@@ -12,6 +12,10 @@ import (
 	"time"
 )
 
+const (
+	RequestIdHeader = "X-Request-Id"
+)
+
 type RequestID string
 
 const RequestIDKey RequestID = "request_id"

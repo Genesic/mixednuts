@@ -19,12 +19,17 @@ type Client struct {
 	baseURL string
 }
 
-func NewClient() *Client {
+func NewClient(baseURL string) *Client {
+	if !strings.HasPrefix(baseURL, "http://") && !strings.HasPrefix(baseURL, "https://") {
+		baseURL = "http://" + baseURL
+	}
+
 	return &Client{
 		Client: &http.Client{
 			Timeout: 5 * time.Second,
 		},
 		headers: make(map[string]string),
+		baseURL: baseURL,
 	}
 }
 
@@ -73,8 +78,8 @@ func (c *Client) MakeJSONRequest(method, path string, headers map[string]string,
 	return req, nil
 }
 
-func (c *Client) CommonDoWithJSON(method, url string, headers map[string]string, input, output interface{}) (int, error) {
-	req, err := c.MakeJSONRequest(method, url, headers, input)
+func (c *Client) CommonDoWithJSON(method, path string, headers map[string]string, input, output interface{}) (int, error) {
+	req, err := c.MakeJSONRequest(method, path, headers, input)
 	if err != nil {
 		return -1, err
 	}
@@ -82,8 +87,8 @@ func (c *Client) CommonDoWithJSON(method, url string, headers map[string]string,
 	return c.CommonDoFromRequest(req, output)
 }
 
-func (c *Client) CommonDoWithForm(method, url string, headers map[string]string, input url.Values) (int, []byte, error) {
-	req, err := http.NewRequest(method, url, strings.NewReader(input.Encode()))
+func (c *Client) CommonDoWithForm(method, path string, headers map[string]string, input url.Values) (int, []byte, error) {
+	req, err := http.NewRequest(method, c.baseURL+path, strings.NewReader(input.Encode()))
 	if err != nil {
 		return -1, nil, err
 	}
